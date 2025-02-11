@@ -3,7 +3,7 @@
 # This class is responsible for displaying the board on the console.
 class Graphics
   def self.display(board)
-    board.each_with_index do |row, row_index|
+    board.reverse.each_with_index do |row, row_index|
       row_display = row.map.with_index do |square, col_index|
         if square
           square.symbol
