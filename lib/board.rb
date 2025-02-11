@@ -13,15 +13,20 @@ class Board
   end
 
   def add_piece(piece, position)
-    raise INVALID_POSITION_ERROR unless valid_position?(position)
+    raise INVALID_POSITION_ERROR unless self.class.valid_position?(position)
 
     row, col = position
     @grid[row][col] = piece
   end
 
-  private
+  def piece_at(position)
+    raise INVALID_POSITION_ERROR unless self.class.valid_position?(position)
 
-  def valid_position?(position)
+    row, col = position
+    @grid[row][col]
+  end
+
+  def self.valid_position?(position)
     row, col = position
     row.between?(0, NUMBER_OF_ROWS - 1) && col.between?(0, NUMBER_OF_COLUMNS - 1)
   end
