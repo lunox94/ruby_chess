@@ -9,8 +9,9 @@ class FenProcessor
 
   # @return [Board] the board object created from the FEN string
   def self.load(fen)
+    parts = fen.split
     board = Board.new
-    rows = fen.split('/')
+    rows = parts[0].split('/')
     rows.each_with_index do |row, row_index|
       col_index = 0
       row.each_char do |char|
@@ -22,7 +23,7 @@ class FenProcessor
         raise INVALID_FEN_ERROR unless Serialization.valid_piece_char?(char)
 
         piece = Serialization.create_piece(char)
-        position = [row_index, col_index]
+        position = [Board::NUMBER_OF_ROWS - row_index - 1, col_index]
         board.add_piece(piece, position)
         col_index += 1
       end
