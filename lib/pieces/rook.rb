@@ -13,9 +13,6 @@ class Rook
 
   MOVES = [UP, DOWN, LEFT, RIGHT].freeze
 
-  VERTICAL = [UP, DOWN].freeze
-  HORIZONTAL = [LEFT, RIGHT].freeze
-
   def initialize(color)
     @color = color
     @symbol = color == :white ? "\u2656" : "\u265C"
