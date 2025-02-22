@@ -5,6 +5,7 @@ class Board
   NUMBER_OF_ROWS = 8
   NUMBER_OF_COLUMNS = 8
   NO_KING_FOUND_ERROR = 'No king found'
+  NO_PIECE_FOUND_ERROR = 'No piece found'
   INVALID_POSITION_ERROR = 'Invalid position'
 
   attr_reader :grid
@@ -18,6 +19,17 @@ class Board
 
     row, col = position
     @grid[row][col] = piece
+  end
+
+  def move_piece(from, to)
+    raise INVALID_POSITION_ERROR unless self.class.valid_position?(from) && self.class.valid_position?(to)
+
+    piece = piece_at(from)
+
+    raise NO_PIECE_FOUND_ERROR if piece.nil?
+
+    @grid[from[0]][from[1]] = nil
+    @grid[to[0]][to[1]] = piece
   end
 
   def in_check?(color)
