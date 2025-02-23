@@ -40,7 +40,7 @@ class GameState
 
     available_moves = piece.available_moves(@board, from)
 
-    available_moves.include?(to)
+    available_moves.include?(to) && can_move_piece?(from, to, piece)
   end
 
   def invalid_move?(from, to)
@@ -71,5 +71,19 @@ class GameState
 
   def switch_active_color
     @active_color = @active_color == Piece::WHITE ? Piece::BLACK : Piece::WHITE
+  end
+
+  # This method checks if a piece can move from one position to another without putting the king in check.
+  def can_move_piece?(from, to, piece)
+    target_piece = @board.piece_at(to)
+
+    @board.move_piece(from, to)
+
+    result = !@board.in_check?(piece.color)
+
+    @board.move_piece(to, from)
+    @board.add_piece(target_piece, to)
+
+    result
   end
 end
