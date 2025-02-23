@@ -66,7 +66,17 @@ class GameState
   end
 
   def checkmate?(color)
-    false
+    return false unless @board.in_check?(color)
+
+    @board.each_piece do |piece, position|
+      next unless piece.color == color
+
+      return false if piece.available_moves(@board, position).any? do |move|
+        can_move_piece?(position, move, piece)
+      end
+    end
+
+    true
   end
 
   def switch_active_color
