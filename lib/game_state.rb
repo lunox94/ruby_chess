@@ -62,21 +62,19 @@ class GameState
   private
 
   def draw?
-    false
+    stalemate? || @halfmove_clock >= 100
   end
 
   def checkmate?(color)
     return false unless @board.in_check?(color)
 
-    @board.each_piece do |piece, position|
-      next unless piece.color == color
+    cannot_move_any_piece?(color)
+  end
 
-      return false if piece.available_moves(@board, position).any? do |move|
-        can_move_piece?(position, move, piece)
-      end
-    end
+  def stalemate?
+    return false if @board.in_check?(@active_color)
 
-    true
+    cannot_move_any_piece?(@active_color)
   end
 
   def switch_active_color
@@ -95,5 +93,17 @@ class GameState
     @board.add_piece(target_piece, to)
 
     result
+  end
+
+  def cannot_move_any_piece?(color)
+    @board.each_piece do |piece, position|
+      next unless piece.color == color
+
+      return false if piece.available_moves(@board, position).any? do |move|
+        can_move_piece?(position, move, piece)
+      end
+    end
+
+    true
   end
 end
