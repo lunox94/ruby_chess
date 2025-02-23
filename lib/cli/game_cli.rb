@@ -24,25 +24,11 @@ class GameCli
     case option
     when NEW_GAME_OPTION
       puts 'Starting a new game...'
-      @game = FenProcessor.parse_fen(NEW_GAME_FEN)
-
-      while @game.status == GameState::IN_PROGRESS
-        clear_and_show_board(@game.board.grid)
-
-        move = obtain_move
-
-        @game.make_move(move[0], move[1])
-
-        if @game.status == GameState::WHITE_WON
-          puts 'White has won the game!'
-        elsif @game.status == GameState::BLACK_WON
-          puts 'Black has won the game!'
-        end
-      end
+      game_loop(NEW_GAME_FEN)
 
     when RESUME_GAME_OPTION
       puts 'Resuming game...'
-      # ...handle resume game logic...
+      game_loop('1k6/1P6/8/1K6/8/8/8/8 w - - 0 1')
     when EXIT_OPTION
       puts 'Closing game...'
     else
@@ -103,5 +89,32 @@ class GameCli
 
   def player_name_from_game_state
     @game.active_color == Piece::WHITE ? 'White' : 'Black'
+  end
+
+  def game_loop(starting_position)
+    @game = FenProcessor.parse_fen(starting_position)
+
+    while @game.status == GameState::IN_PROGRESS
+      clear_and_show_board(@game.board.grid)
+
+      move = obtain_move
+
+      @game.make_move(move[0], move[1])
+
+      display_game_over_message if @game.status != GameState::IN_PROGRESS
+    end
+  end
+
+  def display_game_over_message
+    clear_and_show_board(@game.board.grid)
+
+    case @game.status
+    when GameState::WHITE_WON
+      puts 'CHECKMATE! White has won the game!'
+    when GameState::BLACK_WON
+      puts 'CHECKMATE! Black has won the game!'
+    when GameState::DRAW
+      puts 'The game is a draw!'
+    end
   end
 end
