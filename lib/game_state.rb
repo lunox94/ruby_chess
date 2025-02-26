@@ -45,7 +45,7 @@ class GameState
 
     return false if piece.nil? || piece.color != @active_color
 
-    return have_castling_rights?(from, to) if attempting_castling?(from, to)
+    return castling_rights?(@active_color, castling_side(from, to)) if attempting_castling?(from, to)
 
     available_moves = piece.available_moves(@board, from)
 
@@ -60,7 +60,7 @@ class GameState
     raise INVALID_MOVE_ERROR if invalid_move?(from, to)
 
     if attempting_castling?(from, to)
-      castle(from, to)
+      castle(@active_color, castling_side(from, to))
     else
       @board.move_piece(from, to)
     end
@@ -76,20 +76,16 @@ class GameState
 
   private
 
-  def castle(from, to)
-    case [from, to]
-    when WHITE_CASTLE_KINGSIDE_MOVESET
-      @board.move_piece([0, 4], [0, 6])
-      @board.move_piece([0, 7], [0, 5])
-    when WHITE_CASTLE_QUEENSIDE_MOVESET
-      @board.move_piece([0, 4], [0, 2])
-      @board.move_piece([0, 0], [0, 3])
-    when BLACK_CASTLE_KINGSIDE_MOVESET
-      @board.move_piece([7, 4], [7, 6])
-      @board.move_piece([7, 7], [7, 5])
-    when BLACK_CASTLE_QUEENSIDE_MOVESET
-      @board.move_piece([7, 4], [7, 2])
-      @board.move_piece([7, 0], [7, 3])
+  def castle(color, side)
+    rook_position = rook_starting_position(color, side)
+    king_position = king_starting_position(color)
+
+    if side == :queenside
+      @board.move_piece(king_position, [king_position[0], 2])
+      @board.move_piece(rook_position, [rook_position[0], 3])
+    else
+      @board.move_piece(king_position, [king_position[0], 6])
+      @board.move_piece(rook_position, [rook_position[0], 5])
     end
   end
 
@@ -104,117 +100,79 @@ class GameState
   end
 
   def attempting_castling?(from, to)
-    white_castling = [from, to] == WHITE_CASTLE_KINGSIDE_MOVESET || [from, to] == WHITE_CASTLE_QUEENSIDE_MOVESET
-    black_castling = [from, to] == BLACK_CASTLE_KINGSIDE_MOVESET || [from, to] == BLACK_CASTLE_QUEENSIDE_MOVESET
-
-    white_castling || black_castling
+    castling_side(from, to) != nil
   end
 
-  def have_castling_rights?(from, to)
+  def castling_rights?(color, side)
+    return false unless %i[kingside queenside].include?(side)
+
+    castling_availability?(color, side)
+  end
+
+  def castling_side(from, to)
     case [from, to]
-    when WHITE_CASTLE_KINGSIDE_MOVESET
-      check_white_kingside_castling
-    when WHITE_CASTLE_QUEENSIDE_MOVESET
-      check_white_queenside_castling
-    when BLACK_CASTLE_KINGSIDE_MOVESET
-      check_black_kingside_castling
-    when BLACK_CASTLE_QUEENSIDE_MOVESET
-      check_black_queenside_castling
-    else
-      false
+    in WHITE_CASTLE_KINGSIDE_MOVESET | BLACK_CASTLE_KINGSIDE_MOVESET then :kingside
+    in WHITE_CASTLE_QUEENSIDE_MOVESET | BLACK_CASTLE_QUEENSIDE_MOVESET then :queenside
+    else nil
     end
   end
 
-  def check_white_kingside_castling
-    king = @board.piece_at([0, 4])
-    rook = @board.piece_at([0, 7])
+  def castling_availability?(color, side)
+    return false unless pieces_well_placed_for_castling?(color, side)
 
-    return false unless king.is_a?(King) && king.color == Piece::WHITE
+    return false unless @castling_availability[color].include?(side)
 
-    return false unless rook.is_a?(Rook) && rook.color == Piece::WHITE
+    return false unless no_pieces_between_king_and_rook?(color, side)
 
-    return false unless @castling_availability[Piece::WHITE].include?(:kingside)
+    return false unless no_squares_attacked_between_king_and_rook?(color, side)
 
-    return false unless @board.piece_at([0, 5]).nil? && @board.piece_at([0, 6]).nil?
+    true
+  end
 
-    [[0, 5], [0, 6]].each do |position|
-      return false if @board.piece_at(position)
-    end
+  def pieces_well_placed_for_castling?(color, side)
+    king = @board.piece_at(king_starting_position(color))
+    rook = @board.piece_at(rook_starting_position(color, side))
 
-    [[0, 4], [0, 5], [0, 6]].each do |position|
-      return false if @board.square_controlled?(Piece::BLACK, position)
+    return false unless king.is_a?(King) && king.color == color
+
+    return false unless rook.is_a?(Rook) && rook.color == color
+
+    true
+  end
+
+  def no_pieces_between_king_and_rook?(color, side)
+    king_position = king_starting_position(color)
+
+    side_positions_offset = side == :queenside ? [-1, -2] : [1]
+
+    side_positions_offset.each do |offset|
+      return false if @board.piece_at([king_position[0], king_position[1] + offset])
     end
 
     true
   end
 
-  def check_white_queenside_castling
-    king = @board.piece_at([0, 4])
-    rook = @board.piece_at([0, 0])
+  def no_squares_attacked_between_king_and_rook?(color, side)
+    king_position = king_starting_position(color)
+    opposing_color = color == Piece::WHITE ? Piece::BLACK : Piece::WHITE
 
-    return false unless king.is_a?(King) && king.color == Piece::WHITE
+    side_positions_offset = side == :queenside ? [0, -1, -2] : [0, 1]
 
-    return false unless rook.is_a?(Rook) && rook.color == Piece::WHITE
-
-    return false unless @castling_availability[Piece::WHITE].include?(:queenside)
-
-    return false unless @board.piece_at([0, 1]).nil? && @board.piece_at([0, 2]).nil? && @board.piece_at([0, 3]).nil?
-
-    [[0, 2], [0, 3]].each do |position|
-      return false if @board.piece_at(position)
-    end
-
-    [[0, 2], [0, 3], [0, 4]].each do |position|
-      return false if @board.square_controlled?(Piece::BLACK, position)
+    side_positions_offset.each do |offset|
+      return false if @board.square_controlled?(opposing_color, [king_position[0], king_position[1] + offset])
     end
 
     true
   end
 
-  def check_black_kingside_castling
-    king = @board.piece_at([7, 4])
-    rook = @board.piece_at([7, 7])
-
-    return false unless king.is_a?(King) && king.color == Piece::BLACK
-
-    return false unless rook.is_a?(Rook) && rook.color == Piece::BLACK
-
-    return false unless @castling_availability[Piece::BLACK].include?(:kingside)
-
-    return false unless @board.piece_at([7, 5]).nil? && @board.piece_at([7, 6]).nil?
-
-    [[7, 5], [7, 6]].each do |position|
-      return false if @board.piece_at(position)
-    end
-
-    [[7, 4], [7, 5], [7, 6]].each do |position|
-      return false if @board.square_controlled?(Piece::WHITE, position)
-    end
-
-    true
+  def king_starting_position(color)
+    color == Piece::WHITE ? [0, 4] : [7, 4]
   end
 
-  def check_black_queenside_castling
-    king = @board.piece_at([7, 4])
-    rook = @board.piece_at([7, 0])
+  def rook_starting_position(color, side)
+    row = color == Piece::WHITE ? 0 : 7
 
-    return false unless king.is_a?(King) && king.color == Piece::BLACK
-
-    return false unless rook.is_a?(Rook) && rook.color == Piece::BLACK
-
-    return false unless @castling_availability[Piece::BLACK].include?(:queenside)
-
-    return false unless @board.piece_at([7, 1]).nil? && @board.piece_at([7, 2]).nil? && @board.piece_at([7, 3]).nil?
-
-    [[7, 2], [7, 3]].each do |position|
-      return false if @board.piece_at(position)
-    end
-
-    [[7, 2], [7, 3], [7, 4]].each do |position|
-      return false if @board.square_controlled?(Piece::WHITE, position)
-    end
-
-    true
+    side == :queenside ? [row, 0] : [row, 7]
   end
 
   def stalemate?
